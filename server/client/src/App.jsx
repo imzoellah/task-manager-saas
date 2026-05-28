@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import bg from "./assets/bgd.png";
 
 const portal = document.body;
-const API = "/api";
+const API = "https://task-manager-saas-production-1ae9.up.railway.app/api";
 const COLUMN_META = {
   todo:  { label: "To Do",       emoji: "📋", accent: "#a78bfa", glow: "rgba(167,139,250,0.28)", cardBg: "rgba(167,139,250,0.10)", cardBorder: "rgba(167,139,250,0.28)", headerBg: "rgba(167,139,250,0.13)", dot: "#a78bfa" },
   doing: { label: "In Progress", emoji: "⚡", accent: "#fbbf24", glow: "rgba(251,191,36,0.22)",  cardBg: "rgba(251,191,36,0.09)",  cardBorder: "rgba(251,191,36,0.28)",  headerBg: "rgba(251,191,36,0.11)",  dot: "#fbbf24" },

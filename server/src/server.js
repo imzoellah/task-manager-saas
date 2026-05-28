@@ -12,11 +12,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// HEALTH CHECK
 app.get("/api/ping", (req, res) => {
   res.send("server is alive");
 });
+
+// API ROUTES
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
@@ -29,7 +33,10 @@ mongoose
     });
   })
   .catch((err) => console.log(err));
+
+// SERVE FRONTEND (ONLY AFTER API)
 app.use(express.static(path.join(__dirname, "../client/dist")));
-app.use((req, res) => {
+
+app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
