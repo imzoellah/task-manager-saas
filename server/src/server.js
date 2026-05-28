@@ -9,18 +9,19 @@ const taskRoutes = require("./routes/taskRoutes");
 
 const app = express();
 
+// ── MIDDLEWARE ─────────────────────────
 app.use(cors());
 app.use(express.json());
 
-// HEALTH CHECK
+// ── API ROUTES ──────────────────────────
 app.get("/api/ping", (req, res) => {
   res.send("server is alive");
 });
 
-// API ROUTES
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 
+// ── CONNECT DB ──────────────────────────
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
@@ -32,11 +33,12 @@ mongoose
       console.log(`Server running on port ${PORT}`);
     });
   })
-  .catch((err) => console.log(err));
+  .catch((err) => {
+    console.log("MongoDB error:", err);
+  });
 
-// SERVE FRONTEND (ONLY AFTER API)
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
-app.get("*", (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
