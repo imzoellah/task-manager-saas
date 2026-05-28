@@ -37,8 +37,9 @@ mongoose
     console.log("MongoDB error:", err);
   });
 
-app.use(express.static(path.join(__dirname, "../client/dist")));
+const distPath = path.join(__dirname, "../../client/dist");
 
-app.use((req, res) => {
-  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+app.use(express.static(distPath));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../../client/dist/index.html"));
 });
