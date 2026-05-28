@@ -12,10 +12,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get("/ping", (req, res) => {
+app.get("/api/ping", (req, res) => {
   res.send("server is alive");
 });
-
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 mongoose
