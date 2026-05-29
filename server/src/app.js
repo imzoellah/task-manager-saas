@@ -6,7 +6,7 @@ app.use(express.json());
 
 // Test route
 app.get("/", (req, res) => {
-  res.send("Hello World! Server is working 🔥");
+  res.send("Backend running");
 });
 
 // Example: get all users

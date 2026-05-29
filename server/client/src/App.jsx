@@ -273,17 +273,33 @@ toast.success("Logged in ✨");
   };
 
   // ── create ──
-  const createTask = async () => {
-    const clean = task.trim();
-    if (!clean) return;
-    setTask(""); setDeadline("");
-    const temp = { _id: Date.now().toString(), title: clean, status: "todo", deadline: deadline ? new Date(deadline).toISOString() : null };
-    setTasks(prev => [temp, ...prev]);
-    try {
-      await fetch(`${API}/tasks`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify(temp) });
-      // Don't call getTasks() here — it races with optimistic state and resets statuses
-    } catch { getTasks(); }
-  };
+const createTask = async () => {
+  const clean = task.trim();
+  if (!clean) return;
+
+  setTask("");
+  setDeadline("");
+
+  try {
+    const res = await fetch(`${API}/tasks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token
+      },
+      body: JSON.stringify({
+        title: clean,
+        deadline: deadline ? new Date(deadline).toISOString() : null
+      })
+    });
+
+    const data = await res.json();
+
+    setTasks(prev => [data, ...prev]); // server is source of truth
+  } catch {
+    getTasks();
+  }
+};
 
   // ── update status ──
   const updateStatus = async (id, status) => {
