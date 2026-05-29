@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
 import bg from "./assets/bgd.png";
+import toast from "react-hot-toast";
+import Loader from "./components/Loader";
 
 const portal = document.body;
 const API = "https://task-manager-saas-production-1ae9.up.railway.app/api";
@@ -167,13 +169,19 @@ export default function App() {
   const [editingTask, setEditingTask] = useState(null);
   const [showPanel, setShowPanel]    = useState(false);
 
+  const [tasksLoading, setTasksLoading] = useState(true);
   // ── auth ──
   const login = async () => {
     setLoading(true);
     const res  = await fetch(`${API}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
     const data = await res.json();
     setLoading(false);
-    if (!res.ok) return alert(data.message || "Login failed");
+    if (!res.ok) {
+  toast.error(data.message || "Login failed");
+  return;
+}
+
+toast.success("Logged in ✨");
     localStorage.setItem("token", data.token);
     setToken(data.token);
   };
@@ -182,38 +190,72 @@ export default function App() {
     setLoading(true);
     const res = await fetch(`${API}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
     setLoading(false);
-    if (res.ok) { alert("Account created ✅"); setAuthMode("login"); } else alert("Signup failed");
+    if (res.ok) {
+  toast.success("Account created ✨");
+  setAuthMode("login");
+} else {
+  toast.error("Signup failed");
+}
   };
 
   const logout = () => { localStorage.removeItem("token"); setToken(null); setTasks([]); };
 
   // ── fetch ──
+// ── fetch ──
   const getTasks = useCallback(async () => {
     if (!token || isDragging) return;
+
+    setTasksLoading(true);
+
     try {
-      const res = await fetch(`${API}/tasks`, { headers: { Authorization: "Bearer " + token } });
-      if (res.status === 401) return logout();
+      const res = await fetch(`${API}/tasks`, {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+
+      if (res.status === 401) {
+        logout();
+        return;
+      }
+
       const data = await res.json();
-      const serverTasks = Array.isArray(data) ? data : Array.isArray(data.tasks) ? data.tasks : [];
-      setTasks(prev => {
-        const localMap = new Map(prev.map(t => [t._id, t]));
-        const result = serverTasks.map(st => {
+
+      const serverTasks = Array.isArray(data)
+        ? data
+        : Array.isArray(data.tasks)
+        ? data.tasks
+        : [];
+
+      setTasks((prev) => {
+        const localMap = new Map(prev.map((t) => [t._id, t]));
+
+        const result = serverTasks.map((st) => {
           const local = localMap.get(st._id);
+
           return {
             ...st,
-            // Always keep whatever status is in local state — it may be ahead of the server
+
+            // keep optimistic UI state
             status: local ? local.status : st.status,
-            // Same for deadline
             deadline: local ? local.deadline : st.deadline,
           };
         });
-        // Keep any optimistic tasks not yet confirmed by server
-        prev.forEach(t => {
-          if (!serverTasks.find(st => st._id === t._id)) result.unshift(t);
+
+        // keep temporary optimistic tasks
+        prev.forEach((t) => {
+          if (!serverTasks.find((st) => st._id === t._id)) {
+            result.unshift(t);
+          }
         });
+
         return result;
       });
-    } catch (err) { console.log(err); }
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setTasksLoading(false);
+    }
   }, [token, isDragging]);
 
   useEffect(() => {
@@ -337,8 +379,14 @@ export default function App() {
         }
 
         /* ── HEADER ── */
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; }
-
+          .header {
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:14px;
+          margin-bottom:28px;
+          flex-wrap:wrap;
+        }
         .logo {
           font-family: 'Pacifico', cursive;
           font-size: 2rem; color: #fff;
@@ -546,6 +594,26 @@ export default function App() {
         }
         .empty-icon { font-size:1.9rem; opacity:0.35; }
 
+        /* ── SKELETON ── */
+        @keyframes shimmer {
+          0%   { background-position: -400px 0; }
+          100% { background-position:  400px 0; }
+        }
+        .skeleton-card {
+          height: 60px;
+          border-radius: 16px;
+          margin-bottom: 9px;
+          background: linear-gradient(
+            90deg,
+            rgba(255,255,255,0.04) 25%,
+            rgba(255,255,255,0.09) 50%,
+            rgba(255,255,255,0.04) 75%
+          );
+          background-size: 800px 100%;
+          animation: shimmer 1.4s infinite linear;
+        }
+        .skeleton-wrap { padding: 4px 0; }
+
         /* ── DEADLINE PANEL ── */
         .deadline-panel {
           background:rgba(255,255,255,0.03); backdrop-filter:blur(20px);
@@ -613,12 +681,53 @@ export default function App() {
         .modal-btn.save:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(167,139,250,0.45); }
         .modal-btn.save:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
 
-        @media (max-width:768px) {
-          .board { grid-template-columns:1fr; }
-          .glass-card { padding:22px 18px; }
-          .logo { font-size:1.65rem; }
-          .header-right { gap:8px; }
-        }
+       @media (max-width:768px) {
+
+  .board {
+    grid-template-columns:1fr;
+  }
+
+  .glass-card {
+    padding:22px 18px;
+  }
+
+  .logo {
+    font-size:1.65rem;
+  }
+
+  .header{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:16px;
+  }
+
+  .header-right{
+    width:100%;
+    justify-content:flex-start;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+
+  .progress-pill,
+  .overdue-badge,
+  .deadline-panel-btn,
+  .logout-btn{
+    font-size:0.72rem;
+  }
+
+  .task-input-row{
+    flex-direction:column;
+  }
+
+  .add-btn{
+    width:100%;
+  }
+
+  .deadline-row{
+    flex-wrap:wrap;
+  }
+
+}
       `}</style>
 
       <div className="app-root">
@@ -731,58 +840,78 @@ export default function App() {
                                 </div>
                                 <span className="col-count">{items.length}</span>
                               </div>
+
                               <div className="col-body">
-                                {items.length === 0 && (
+                                {/* BUG FIX 2: ternary chain so skeleton, empty state, and
+                                    items are mutually exclusive — no more invisible
+                                    zero-height skeleton divs racing with the empty state */}
+                                {tasksLoading ? (
+                                  <div className="skeleton-wrap">
+                                    <div className="skeleton-card" />
+                                    <div className="skeleton-card" />
+                                    <div className="skeleton-card" />
+                                  </div>
+                                ) : items.length === 0 ? (
                                   <div className="empty-state">
                                     <span className="empty-icon">{meta.emoji}</span>
                                     <span>drop tasks here</span>
                                   </div>
-                                )}
-                                {items.map((t, index) => {
-                                  const urgency = t.deadline && t.status !== "done" ? getUrgency(t.deadline) : null;
-                                  return (
-                                    <Draggable key={t._id} draggableId={t._id} index={index}>
-                                      {(provided, snapshot) => {
-                                        const card = (
-                                          <div
-                                            ref={provided.innerRef}
-                                            {...provided.draggableProps}
-                                            {...provided.dragHandleProps}
-                                            className={`task-card ${snapshot.isDragging ? "dragging" : ""} ${urgency ? `urgency-${urgency}` : ""}`}
-                                            style={{
-                                              "--card-bg": meta.cardBg,
-                                              "--card-border": meta.cardBorder,
-                                              ...provided.draggableProps.style,
-                                            }}
-                                          >
-                                            <div className="card-top">
-                                              <span className="task-title">{t.title}</span>
-                                              <div className="card-actions">
-                                                <button
-                                                  className={`clock-btn ${t.deadline ? "has-deadline" : ""}`}
-                                                  onClick={() => setEditingTask(t)}
-                                                  title="Set deadline"
-                                                >
-                                                  {t.deadline ? "⏰" : "🕐"}
-                                                </button>
-                                                <button className="delete-btn" onClick={() => deleteTask(t._id)} title="Delete">×</button>
+                                ) : (
+                                  items.map((t, index) => {
+                                    const urgency = t.deadline && t.status !== "done" ? getUrgency(t.deadline) : null;
+                                    return (
+                                      <Draggable key={t._id} draggableId={t._id} index={index}>
+                                        {(provided, snapshot) => {
+                                          const card = (
+                                            <div
+                                              ref={provided.innerRef}
+                                              {...provided.draggableProps}
+                                              {...provided.dragHandleProps}
+                                              className={`task-card ${snapshot.isDragging ? "dragging" : ""} ${urgency ? `urgency-${urgency}` : ""}`}
+                                              style={{
+                                                "--card-bg": meta.cardBg,
+                                                "--card-border": meta.cardBorder,
+                                                ...provided.draggableProps.style,
+                                              }}
+                                            >
+                                              <div className="card-top">
+                                                <span className="task-title">{t.title}</span>
+                                                <div className="card-actions">
+                                                  <button
+                                                    className={`clock-btn ${t.deadline ? "has-deadline" : ""}`}
+                                                    onClick={() => setEditingTask(t)}
+                                                    title="Set deadline"
+                                                  >
+                                                    {t.deadline ? "⏰" : "🕐"}
+                                                  </button>
+                                                  <button className="delete-btn" onClick={() => deleteTask(t._id)} title="Delete">×</button>
+                                                </div>
                                               </div>
+                                              {t.deadline && t.status !== "done" && (
+                                                <CountdownChip deadline={t.deadline} />
+                                              )}
+                                              {t.deadline && t.status === "done" && (
+                                                <span style={{ fontSize: "0.71rem", color: "rgba(255,255,255,0.28)", fontFamily: "'Nunito',sans-serif" }}>
+                                                  📅 {formatDeadlineDate(t.deadline)}
+                                                </span>
+                                              )}
                                             </div>
-                                            {t.deadline && t.status !== "done" && (
-                                              <CountdownChip deadline={t.deadline} />
-                                            )}
-                                            {t.deadline && t.status === "done" && (
-                                              <span style={{ fontSize: "0.71rem", color: "rgba(255,255,255,0.28)", fontFamily: "'Nunito',sans-serif" }}>
-                                                📅 {formatDeadlineDate(t.deadline)}
-                                              </span>
-                                            )}
-                                          </div>
-                                        );
-                                        return snapshot.isDragging ? createPortal(card, portal) : card;
-                                      }}
-                                    </Draggable>
-                                  );
-                                })}
+                                          );
+
+                                          /* BUG FIX 1: removed the custom placeholder <div>
+                                             that was fighting the library's own placeholder
+                                             and causing cards to snap back on empty-column
+                                             drops. Just portal when dragging, render normally
+                                             otherwise — provided.placeholder below handles
+                                             the space reservation. */
+                                          return snapshot.isDragging
+                                            ? createPortal(card, portal)
+                                            : card;
+                                        }}
+                                      </Draggable>
+                                    );
+                                  })
+                                )}
                                 {provided.placeholder}
                               </div>
                             </div>

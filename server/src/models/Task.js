@@ -4,16 +4,17 @@ const taskSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
-     status: {
+  },
+
+  status: {
     type: String,
     enum: ["todo", "doing", "done"],
     default: "todo",
-}
   },
 
-  completed: {
-    type: Boolean,
-    default: false,
+  deadline: {
+    type: Date,
+    default: null,
   },
 
   user: {
