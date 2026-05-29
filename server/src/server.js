@@ -1,7 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const path = require("path");
 require("dotenv").config();
 
 const authRoutes = require("./routes/authRoutes");
@@ -13,15 +12,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ── API ROUTES ──────────────────────────
+// ── HEALTH CHECK ────────────────────────
 app.get("/api/ping", (req, res) => {
   res.send("server is alive");
 });
 
+// ── API ROUTES ──────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 
-// ── CONNECT DB ──────────────────────────
+// ── CONNECT DB + START SERVER ───────────
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
@@ -36,10 +36,3 @@ mongoose
   .catch((err) => {
     console.log("MongoDB error:", err);
   });
-
-const distPath = path.join(__dirname, "../../client/dist");
-
-app.use(express.static(distPath));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../../client/dist/index.html"));
-});
